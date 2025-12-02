@@ -56,48 +56,38 @@ def construct_design_matrix(x_1, x_2, x_3, x_4, x_5):
 
 # Solving normal equations
 def normal_equations_solver(X, y, cond_thresh=1e12):
-    """
-    Solve (X^T X) beta = X^T y if well-conditioned; otherwise fall back to pseudoinverse.
-    Returns (beta, info_dict).
-    """
+    # Solve (X^T X) beta = X^T y
+
     XtX = X.T @ X
     Xty = X.T @ y
-    s = np.linalg.svd(XtX, compute_uv=False)
-    cond = np.nan
-    if len(s) > 0 and s[-1] > 0:
-        cond = s[0] / s[-1]
-    info = {'cond_XtX': cond}
-    try:
-        if cond < cond_thresh:
-            beta = np.linalg.solve(XtX, Xty)
-            info['method'] = 'solve'
-        else:
-            beta = np.linalg.pinv(X) @ y
-            info['method'] = 'pinv_due_to_condition'
-    except np.linalg.LinAlgError:
-        beta = np.linalg.pinv(X) @ y
-        info['method'] = 'pinv_exception'
-    return beta, info
+    
+    beta = np.linalg.solve(XtX, Xty)
+    return beta
 
+
+
+ # Do least-squares regression via QR factoriaztion
 def qr_solver(X, y):
-    """
-    Solve via QR: X = Q R, beta = R^{-1} Q^T y
-    """
+    # Do least-squares regression via QR factoriaztion: X = Q R, R beta = Q^T y
     Q, R = np.linalg.qr(X, mode='reduced')
     beta = np.linalg.solve(R, Q.T @ y)
-    return beta, {'method': 'qr'}
+    return beta
 
-# -----------------------------
-# Predict & evaluate
-# -----------------------------
+
+
+# Compute predicted y hat values from the least-squares estimate
 def predict(X, beta):
     return X @ beta
 
+# Compute the squared error
 def squared_error(y_true, y_pred):
     return np.sum((y_true - y_pred) ** 2)
 
 def rmse(y_true, y_pred):
     return np.sqrt(np.mean((y_true - y_pred) ** 2))
+
+
+
 
 # -----------------------------
 # SVD & condition number
@@ -113,6 +103,9 @@ def condition_number_from_svals(svals):
     if svals[-1] == 0:
         return np.inf
     return float(svals[0] / svals[-1])
+
+
+
 
 # -----------------------------
 # Simple plotting
