@@ -10,7 +10,6 @@ def load():
     return data
 
 
-
 # Training/test set split
 def train_test_split(x, y, split_ratio=0.8):
     # number of total data points
@@ -32,13 +31,12 @@ def train_test_split(x, y, split_ratio=0.8):
 
 
 
-
 # Constructing the Design matrix given predictor variables
 def construct_design_matrix(x_1, x_2, x_3, x_4, x_5):
     # precip, avg_temp, humidity, solar_irradiance, sea_surface_temp are the column vectors/predictor variables for our data set
     
     # left-most column of ones
-    ones = np.ones((len(precip), 1))
+    ones = np.ones((len(x_1), 1))
 
     # stack predictors horizontally, then reshape them to be vertical columns
     X = np.hstack([
@@ -50,7 +48,6 @@ def construct_design_matrix(x_1, x_2, x_3, x_4, x_5):
         x_5.reshape(-1, 1)
     ])
     return X
-
 
 
 
@@ -79,128 +76,41 @@ def qr_solver(X, y):
 def predict(X, beta):
     return X @ beta
 
+
 # Compute the squared error
-def squared_error(y_true, y_pred):
-    return np.sum((y_true - y_pred) ** 2)
-
-def rmse(y_true, y_pred):
-    return np.sqrt(np.mean((y_true - y_pred) ** 2))
+def squared_error(y_actual, y_hat):
+    return np.sum((y_actual - y_hat) ** 2)
 
 
 
-
-# -----------------------------
-# SVD & condition number
-# -----------------------------
+# Finding singular values (to be used for calculuating condition number)
 def singular_values_XtX(X):
     XtX = X.T @ X
+    # returns array of singular values in increasing order
     s = np.linalg.svd(XtX, compute_uv=False)
     return s
 
-def condition_number_from_svals(svals):
-    if len(svals) == 0:
-        return np.nan
-    if svals[-1] == 0:
-        return np.inf
-    return float(svals[0] / svals[-1])
+
+# Calculating condition number
+def condition_number(singular_values):
+    sigma_max = singular_values[0]
+    sigma_min = singular_values[-1]
+    return float(sigma_max / sigma_min)
 
 
 
-
-# -----------------------------
-# Simple plotting
-# -----------------------------
-def plot_pred_vs_actual(y_true, y_pred, title='Predicted vs Actual', out_path='pred_vs_actual.png'):
+# Plotting the regression model over the actual points
+def plotting(y_actual, y_hat, title='Predicted vs Actual', out_path='pred_vs_actual.png'):
     plt.figure(figsize=(6,6))
-    plt.scatter(y_true, y_pred)
-    mn = min(min(y_true), min(y_pred))
-    mx = max(max(y_true), max(y_pred))
+    plt.scatter(y_actual, y_hat)
+    mn = min(min(y_actual), min(y_hat))
+    mx = max(max(y_actual), max(y_hat))
     plt.plot([mn, mx], [mn, mx])
     plt.xlabel('Actual')
     plt.ylabel('Predicted')
-    plt.title(title)
+    plt.title('CO2 vs Precip, Avg temp, Humidity, Solar Irradiance, Sea Surface Temp')
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(out_path)
     plt.close()
     return out_path
-
-# -----------------------------
-# Demo pipeline (example usage)
-# -----------------------------
-def demo_pipeline(csv_path,
-                  response_col,
-                  predictor_cols,
-                  poly_features=None,
-                  interaction_pairs=None,
-                  standardize=True,
-                  ratio=0.8,
-                  seed=42,
-                  shuffle=True):
-    # load and prepare
-    X, y_all, data = load(csv_path, response_col, predictor_cols, fill_method='mean')
-    print("Data sample:")
-    print(data.head())
-
-    # split
-    X_train, X_test, y_train, y_test = train_test_split(X, y_all, ratio=ratio, seed=seed, shuffle=shuffle)
-
-    # design matrices
-    X_train, feature_names = construct_design_matrix(X_train, add_intercept=True, poly_features=poly_features, interaction_pairs=interaction_pairs, standardize=standardize)
-    X_test, _ = construct_design_matrix(X_test, add_intercept=True, poly_features=poly_features, interaction_pairs=interaction_pairs, standardize=standardize)
-
-    print("Design matrix features:", feature_names)
-    print("Shapes:", X_train.shape, X_test.shape)
-
-    # Normal equations
-    beta_ne, info_ne = normal_equations_solver(X_train, y_train)
-    y_train_pred_ne = predict(X_train, beta_ne)
-    y_test_pred_ne = predict(X_test, beta_ne)
-    train_err_ne = squared_error(y_train, y_train_pred_ne)
-    test_err_ne = squared_error(y_test, y_test_pred_ne)
-    svals = singular_values_XtX(X_train)
-    cond = condition_number_from_svals(svals)
-
-    print("Normal eq info:", info_ne)
-    print(f"Train error (NE): {train_err_ne:.6f}, Test error (NE): {test_err_ne:.6f}")
-    print(f"Condition number of X^T X (train): {cond:.4e}")
-
-    # QR solver
-    beta_qr, info_qr = qr_solver(X_train, y_train)
-    y_test_pred_qr = predict(X_test, beta_qr)
-    test_err_qr = squared_error(y_test, y_test_pred_qr)
-    print("QR info:", info_qr)
-    print(f"Test error (QR): {test_err_qr:.6f}")
-
-    # Plot predicted vs actual on test set (NE)
-    out_path = plot_pred_vs_actual(y_test, y_test_pred_ne, title='NE: Predicted vs Actual (test)', out_path='pred_vs_actual_ne.png')
-    print("Saved plot to", out_path)
-
-    return {
-        'X_train': X_train, 'X_test': X_test,
-        'y_train': y_train, 'y_test': y_test,
-        'beta_ne': beta_ne, 'beta_qr': beta_qr,
-        'train_err_ne': train_err_ne, 'test_err_ne': test_err_ne,
-        'test_err_qr': test_err_qr,
-        'svals_XtX': svals, 'cond_XtX': cond,
-        'feature_names': feature_names,
-        'plot_path': out_path
-    }
-
-# -----------------------------
-# Example of running demo_pipeline
-# -----------------------------
-if __name__ == "__main__":
-    csv_path = 'climate_change_dataset.csv'   # put your CSV in same directory or give full path
-    if Path(csv_path).exists():
-        response_col = 'CO2_Concentration (ppm)'
-        predictor_cols = ['Precipitation (mm)', 'Avg_Temp (°C)', 'Humidity (%)', 'Solar_Irradiance (W/m²)', 'Sea_Surface_Temp (°C)']
-        # Example: add interaction Temp * Humidity and standardize features
-        results = demo_pipeline(csv_path, response_col, predictor_cols,
-                                poly_features=None,
-                                interaction_pairs=[('Avg_Temp (°C)', 'Humidity (%)')],
-                                standardize=True,
-                                ratio=0.8, seed=42, shuffle=True)
-        print("Top singular values of X^T X:", results['svals_XtX'][:6])
-    else:
-        print(f"Place your dataset named '{csv_path}' in this directory and run this script.")
