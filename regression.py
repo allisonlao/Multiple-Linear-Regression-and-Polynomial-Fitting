@@ -299,6 +299,5 @@ def main():
     plot_polynomial_fits(avg_temp, y, max_degree=6)
     print("Saved poly_fits.png, please go into the working directory to open it to see the constructed plot")
 
-
 if __name__ == "__main__":
     main()
