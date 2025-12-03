@@ -237,7 +237,6 @@ def main():
 
     # load the csv file
     df = load()
-    print("Loaded data shape:", df.shape)
     
     #names the columns
     resp_col = 'CO2_Concentration (ppm)'
