@@ -199,7 +199,7 @@ def polynomial_regression_analysis(x, y, max_degree=10):
     # Make the train/test sets
     X_all = np.asarray(x).reshape(-1)
     y_arr = np.asarray(y).reshape(-1)
-    X_tr, y_tr, X_te, y_te = train_test_split(X_all, y_arr, split_ratio=split_ratio)
+    X_tr, y_tr, X_te, y_te = train_test_split(X_all, y_arr)
     train_errors = []
     test_errors = []
     cond_numbers = []
@@ -209,7 +209,7 @@ def polynomial_regression_analysis(x, y, max_degree=10):
     for deg in range(1, max_degree + 1):
         X_train = construct_poly_design_matrix(X_tr, deg)
         X_test = construct_poly_design_matrix(X_te, deg)
-        beta = solver(X_train, y_tr)
+        beta = normal_equations_solver(X_train, y_tr)
         y_tr_hat = predict(X_train, beta)
         y_te_hat = predict(X_test, beta)
         train_errors.append(squared_error(y_tr, y_tr_hat))
@@ -228,7 +228,7 @@ def polynomial_regression_analysis(x, y, max_degree=10):
 
 
 # main function to run the code on the global warming climate dataset
-def main_demo():
+def main():
 
     csv_path = Path("climate_change_dataset.csv")
     if not csv_path.exists():
@@ -260,7 +260,7 @@ def main_demo():
     # constructs multiple-predictor design matrix and run a single linear fit
     
     X = construct_design_matrix(precip, avg_temp, humidity, solar, sst)
-    X_train, y_train, X_test, y_test = train_test_split(X, y, split_ratio=0.8)
+    X_train, y_train, X_test, y_test = train_test_split(X, y)
     beta = normal_equations_solver(X_train, y_train)
     y_test_pred = predict(X_test, beta)
     se_test = squared_error(y_test, y_test_pred)
@@ -290,7 +290,7 @@ def main_demo():
     plt.title('Condition number vs polynomial degree')
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig('poly_condition_plot.png, please go into the working directory to open it to see the constructed plot')
+    plt.savefig('poly_condition_plot.png')
     plt.close()
     print("Saved poly_condition_plot.png, please go into the working directory to open it to see the constructed plot")
 
@@ -301,5 +301,4 @@ def main_demo():
 
 
 if __name__ == "__main__":
-    main_demo()
-
+    main()
