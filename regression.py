@@ -261,7 +261,7 @@ def main_demo():
     
     X = construct_design_matrix(precip, avg_temp, humidity, solar, sst)
     X_train, y_train, X_test, y_test = train_test_split(X, y, split_ratio=0.8)
-    beta, info = normal_equations_solver(X_train, y_train)
+    beta = normal_equations_solver(X_train, y_train)
     y_test_pred = predict(X_test, beta)
     se_test = squared_error(y_test, y_test_pred)
     svals_XtX = singular_values_XtX(X_train)
@@ -272,7 +272,7 @@ def main_demo():
 
     
     # Plot predicted vs actual (multiple-regression)
-    plotting(y_test, y_test_pred_ne, title='Multiple reg: Pred vs Actual', returned ='multiple_pred_vs_actual.png')
+    plotting(y_test, y_test_pred, title='Multiple reg: Pred vs Actual', returned ='multiple_pred_vs_actual.png')
     print("Saved multiple_pred_vs_actual.png in the folder, please go into the working directory to open it to see the constructed plot")
 
     
