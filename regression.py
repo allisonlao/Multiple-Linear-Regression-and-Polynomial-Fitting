@@ -209,7 +209,7 @@ def polynomial_regression_analysis(x, y, max_degree=10):
     for deg in range(1, max_degree + 1):
         X_train = construct_poly_design_matrix(X_tr, deg)
         X_test = construct_poly_design_matrix(X_te, deg)
-        beta, info = solver(X_train, y_tr)
+        beta = solver(X_train, y_tr)
         y_tr_hat = predict(X_train, beta)
         y_te_hat = predict(X_test, beta)
         train_errors.append(squared_error(y_tr, y_tr_hat))
