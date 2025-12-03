@@ -30,15 +30,14 @@ def train_test_split(x, y, split_ratio=0.8):
 
 
 
-
-# Constructing the Design matrix given predictor variables
+# Constructing simple design matrix given 5 predictor variables
 def construct_design_matrix(x_1, x_2, x_3, x_4, x_5):
     # precip, avg_temp, humidity, solar_irradiance, sea_surface_temp are the column vectors/predictor variables for our data set
     
     # left-most column of ones
     ones = np.ones((len(x_1), 1))
 
-    # stack predictors horizontally, then reshape them to be vertical columns
+    # stack predictors and column of ones into the design matrix X
     X = np.hstack([
         ones,
         x_1.reshape(-1, 1),
@@ -51,55 +50,39 @@ def construct_design_matrix(x_1, x_2, x_3, x_4, x_5):
 
 
 
-
-
-
-# Polynomial design matrix (for one predictor)
+# Constructing a polynomial design matrix (for one predictor)
 def construct_poly_design_matrix(x, degree):
-    """
-    Build polynomial design matrix [1, x, x^2, ..., x^degree] for a single predictor x.
-    x may be 1D numpy array or pandas Series.
-    Returns numpy array shape (n, degree+1).
-    """
+    #build polynomial design matrix [1, x, x^2, ..., x^degree] for a single predictor x
+    
     x_arr = np.asarray(x).reshape(-1)
     n = len(x_arr)
+    
     X = np.ones((n, degree + 1))
+
+    
     for d in range(1, degree + 1):
         X[:, d] = x_arr ** d
+        
     return X
 
 
-
-# Solving normal equations
-def normal_equations_solver(X, y, cond_thresh=1e12):
+# Solving normal equations given design matrix X and response vector y
+def normal_equations_solver(X, y):
     # Solve (X^T X) beta = X^T y
 
     XtX = X.T @ X
     Xty = X.T @ y
     
     beta = np.linalg.solve(XtX, Xty)
-    info = {'Method used': 'normal equations'}
-    return beta, info
+
+    return beta
 
 
 
-def qr_solver(X, y):
-    """
-    Solve least-squares using QR: X = Q R, then solve R beta = Q^T y.
-    Returns beta and info dict.
-    """
-    X = np.asarray(X)
-    y = np.asarray(y).reshape(-1)
-    Q, R = np.linalg.qr(X, mode='reduced')
-    beta = np.linalg.solve(R, Q.T @ y)
-    info = {'Method used': 'QR factorization'}
-    return beta, info
-
-
-
-# Compute predicted y hat values from the least-squares estimate
+# Compute predicted y hat values from the least-squares estimate, beta
 def predict(X, beta):
     return X @ beta
+    
 
 
 # Compute the squared error
@@ -111,10 +94,10 @@ def squared_error(y_actual, y_hat):
 # Finding singular values (to be used for calculuating condition number)
 def singular_values_XtX(X):
     XtX = X.T @ X
-    # returns array of singular values in increasing order
+    
+    # returns array of singular values in decreasing order
     s = np.linalg.svd(XtX, compute_uv=False)
     return s
-
 
 
 
@@ -125,90 +108,104 @@ def condition_number(singular_values):
     return float(sigma_max / sigma_min)
 
 
-# -----------------------------
-# Plotting helpers
-# -----------------------------
-def plotting(y_actual, y_hat, title='Predicted vs Actual', out_path='pred_vs_actual.png'):
-    y_actual = np.asarray(y_actual).reshape(-1)
+
+# Plotting predicted values from regression model versus actual values
+def plotting(y_actual, y_hat, title='Pred vs Actual', returned ='pred_vs_actual.png'):
+
+    
     y_hat = np.asarray(y_hat).reshape(-1)
+    y_actual = np.asarray(y_actual).reshape(-1)
+    
     plt.figure(figsize=(6,6))
     plt.scatter(y_actual, y_hat, s=20)
+
+    
     mn = min(y_actual.min(), y_hat.min())
     mx = max(y_actual.max(), y_hat.max())
+
+    
     plt.plot([mn, mx], [mn, mx], linestyle='--', color='gray')
+
     plt.xlabel('Actual')
     plt.ylabel('Predicted')
     plt.title(title)
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(out_path)
+
+    #saves the plot as a .png in the folder
+    plt.savefig(returned)
     plt.close()
-    return out_path
+    
+    return returned
 
 
-def plot_errors(train_errs, test_errs, out_path='error_plot.png'):
+# Plotting Training vs Test Error
+def plot_errors(train_errs, test_errs, title = 'Training vs Test Error' , returned = 'test_vs_training_errors.png'):
     degrees = np.arange(1, len(train_errs) + 1)
     plt.figure(figsize=(7,5))
     plt.plot(degrees, train_errs, marker='o', label='Training Error (SE)')
     plt.plot(degrees, test_errs, marker='o', label='Test Error (SE)')
     plt.xlabel('Polynomial Degree')
     plt.ylabel('Squared Error')
-    plt.title('Training vs Test Error as Degree Increases')
+    plt.title(title)
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(out_path)
+    plt.savefig(returned)
     plt.close()
-    return out_path
+    return returned
 
-def plot_polynomial_fits(x, y, max_degree=5, out_path='poly_fits.png', solver=qr_solver):
-    """
-    Plot data points and fitted polynomials of degrees 1..max_degree.
-    x, y are 1D arrays (single predictor).
-    solver: function that takes (X, y) and returns (beta, info)
-    """
+
+# Plotting different polynomial fits (degrees 1 to 5)
+def plot_polynomial_fits(x, y, max_degree=5):
+    
     x = np.asarray(x).reshape(-1)
     y = np.asarray(y).reshape(-1)
     plt.figure(figsize=(8,6))
     plt.scatter(x, y, color='gray', s=15, label='Data')
     x_grid = np.linspace(x.min(), x.max(), 500)
+
+    #plotting each polynomial model
     for deg in range(1, max_degree + 1):
         X_train = construct_poly_design_matrix(x, deg)
-        beta, _ = solver(X_train, y)
+        beta = normal_equations_solver(X_train, y)
         X_grid = construct_poly_design_matrix(x_grid, deg)
         y_grid = predict(X_grid, beta)
         plt.plot(x_grid, y_grid, label=f"deg {deg}")
+        
     plt.xlabel('Predictor (x)')
     plt.ylabel('Response (y)')
     plt.title('Polynomial fits of different degrees')
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(out_path)
+    plt.savefig('polynomial_fits.png')
     plt.close()
-    return out_path
+    return 'polynomial_fits.png'
 
-# -----------------------------
-# Polynomial regression analysis (degree sweep)
-# -----------------------------
-def polynomial_regression_analysis(x, y, max_degree=10, solver=qr_solver, split_ratio=0.8, seed=None):
+
+
+# Polynomial regression analysis, combines the previously defined functions and returns polynomial model regression analysis 
+def polynomial_regression_analysis(x, y, max_degree=10):
     """
-    For degrees 1..max_degree:
+    For degrees 1 to max_degree, this function
       - build polynomial design matrices
-      - fit on training data
-      - compute training & test squared error
-      - compute singular values & condition number of X^T X on training set
-    Returns dict with lists: train_errors, test_errors, cond_numbers, singular_values_list
+      - does the polynomial regression on the training and test sets
+      - computes training & test squared error
+      - computes singular values & condition number of X^T X on the training set
+    Returns the lists: train_errors, test_errors, cond_numbers, singular_values_list
     """
-    # Prepare train/test splits (use the single predictor x for splitting so we can preserve pairing)
-    x_arr = np.asarray(x).reshape(-1)
+    
+    # Make the train/test sets
+    X_all = np.asarray(x).reshape(-1)
     y_arr = np.asarray(y).reshape(-1)
-    X_all = x_arr  # for clarity
-    X_tr, y_tr, X_te, y_te = train_test_split(X_all, y_arr, split_ratio=split_ratio, seed=seed)
+    X_tr, y_tr, X_te, y_te = train_test_split(X_all, y_arr, split_ratio=split_ratio)
     train_errors = []
     test_errors = []
     cond_numbers = []
     svals_list = []
+
+    # do polynomial regression for degrees 1 through max_degree, computes squared error and condition number
     for deg in range(1, max_degree + 1):
         X_train = construct_poly_design_matrix(X_tr, deg)
         X_test = construct_poly_design_matrix(X_te, deg)
@@ -220,6 +217,8 @@ def polynomial_regression_analysis(x, y, max_degree=10, solver=qr_solver, split_
         svals = np.linalg.svd(X_train.T @ X_train, compute_uv=False)
         svals_list.append(svals)
         cond_numbers.append(condition_number(svals))
+
+    # returns the training set errors, test set errors, condition numbers, and singular values
     return {
         'train_errors': train_errors,
         'test_errors': test_errors,
@@ -227,20 +226,20 @@ def polynomial_regression_analysis(x, y, max_degree=10, solver=qr_solver, split_
         'svals_list': svals_list
     }
 
-# -----------------------------
-# Example main that ties everything together for your dataset
-# -----------------------------
+
+# main function to run the code on the global warming climate dataset
 def main_demo():
-    # Check CSV exists
+
     csv_path = Path("climate_change_dataset.csv")
     if not csv_path.exists():
-        print("Put 'climate_change_dataset.csv' in the working directory and re-run.")
+        print("Please put 'climate_change_dataset.csv' in the working directory and re run the code, cause it only works if it can find the CSV file in the same folder, thank you")
         return
 
-    # load
+    # load the csv file
     df = load()
     print("Loaded data shape:", df.shape)
-    # adjust these column names if your CSV uses slightly different names
+    
+    #names the columns
     resp_col = 'CO2_Concentration (ppm)'
     p1 = 'Precipitation (mm)'
     p2 = 'Avg_Temp (°C)'
@@ -248,12 +247,8 @@ def main_demo():
     p4 = 'Solar_Irradiance (W/m²)'
     p5 = 'Sea_Surface_Temp (°C)'
 
-    # ensure columns exist
-    for col in [resp_col, p1, p2, p3, p4, p5]:
-        if col not in df.columns:
-            raise ValueError(f"Expected column '{col}' not found in CSV. Columns available: {list(df.columns)}")
-
-    # extract arrays
+    
+    # extract arrays from the columns
     precip = df[p1].to_numpy()
     avg_temp = df[p2].to_numpy()
     humidity = df[p3].to_numpy()
@@ -261,28 +256,33 @@ def main_demo():
     sst = df[p5].to_numpy()
     y = df[resp_col].to_numpy()
 
-    # construct multiple-predictor design matrix and run a single linear fit
+    
+    # constructs multiple-predictor design matrix and run a single linear fit
+    
     X = construct_design_matrix(precip, avg_temp, humidity, solar, sst)
-    X_train, y_train, X_test, y_test = train_test_split(X, y, split_ratio=0.8, seed=42)
-    beta_ne, info_ne = normal_equations_solver(X_train, y_train)
-    y_test_pred_ne = predict(X_test, beta_ne)
-    se_test_ne = squared_error(y_test, y_test_pred_ne)
+    X_train, y_train, X_test, y_test = train_test_split(X, y, split_ratio=0.8)
+    beta, info = normal_equations_solver(X_train, y_train)
+    y_test_pred = predict(X_test, beta)
+    se_test = squared_error(y_test, y_test_pred)
     svals_XtX = singular_values_XtX(X_train)
     cond_XtX = condition_number(svals_XtX)
-    print("Multiple linear regression (normal equations):")
-    print("method info:", info_ne)
-    print("Test squared error:", se_test_ne)
+    print("Multiple linear regression (using normal equations):")
+    print("Test squared error:", se_test)
     print("Condition number (X^T X):", cond_XtX)
 
+    
     # Plot predicted vs actual (multiple-regression)
-    plotting(y_test, y_test_pred_ne, title='Multiple reg: Pred vs Actual', out_path='multiple_pred_vs_actual.png')
-    print("Saved multiple_pred_vs_actual.png")
+    plotting(y_test, y_test_pred_ne, title='Multiple reg: Pred vs Actual', returned ='multiple_pred_vs_actual.png')
+    print("Saved multiple_pred_vs_actual.png in the folder, please go into the working directory to open it to see the constructed plot")
 
-    # Now polynomial regression analysis using avg_temp as the single predictor
-    poly_results = polynomial_regression_analysis(avg_temp, y, max_degree=10, solver=qr_solver, split_ratio=0.8, seed=42)
-    plot_errors(poly_results['train_errors'], poly_results['test_errors'], out_path='poly_error_plot.png')
-    print("Saved poly_error_plot.png")
-    # save condition numbers plot
+    
+    # Polynomial regression analysis using avg_temp as the single predictor
+    poly_results = polynomial_regression_analysis(avg_temp, y, max_degree=10)
+    plot_errors(poly_results['train_errors'], poly_results['test_errors'], returned = 'poly_error_plot.png')
+    print("Saved poly_error_plot.png, please go into the working directory to open it to see the constructed plot")
+
+    
+    # save condition numbers plot to observe numerical instability issues
     plt.figure(figsize=(7,5))
     plt.plot(np.arange(1, len(poly_results['cond_numbers'])+1), poly_results['cond_numbers'], marker='o')
     plt.xlabel('Polynomial degree')
@@ -290,13 +290,15 @@ def main_demo():
     plt.title('Condition number vs polynomial degree')
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig('poly_condition_plot.png')
+    plt.savefig('poly_condition_plot.png, please go into the working directory to open it to see the constructed plot')
     plt.close()
-    print("Saved poly_condition_plot.png")
+    print("Saved poly_condition_plot.png, please go into the working directory to open it to see the constructed plot")
 
-    # plot polynomial fits (visual)
-    plot_polynomial_fits(avg_temp, y, max_degree=6, out_path='poly_fits.png', solver=qr_solver)
-    print("Saved poly_fits.png")
+    
+    # plot polynomial fits
+    plot_polynomial_fits(avg_temp, y, max_degree=6)
+    print("Saved poly_fits.png, please go into the working directory to open it to see the constructed plot")
+
 
 if __name__ == "__main__":
     main_demo()
