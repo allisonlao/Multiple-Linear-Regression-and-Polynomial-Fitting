@@ -14,7 +14,7 @@ def train_test_split(x, y, split_ratio=0.8, seed=0):
     # number of total data points
     n = len(x)
 
-    # create RNG with a fixed seed so results are reproducible
+    # create rng with a fixed seed, so it generates the same thing each time
     rng = np.random.default_rng(seed)
 
     # shuffle the indices so the split is random (but repeatable)
