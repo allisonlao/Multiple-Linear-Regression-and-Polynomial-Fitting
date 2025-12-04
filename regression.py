@@ -24,7 +24,7 @@ def train_test_split(x, y, split_ratio=0.8, seed=0):
     # calculate size of the training set
     training_size = int(split_ratio * n)
 
-    # split the indices --- first 80% goes into the training set, the rest goes to the test set
+    # split the indices -first 80% goes into the training set, the rest goes to the test set
     training_idx = indices[:training_size]
     test_idx = indices[training_size:]
 
@@ -54,7 +54,7 @@ def construct_design_matrix(x_1, x_2, x_3, x_4, x_5):
 
 # Constructing a polynomial design matrix (for one predictor)
 def construct_poly_design_matrix(x, degree):
-    #build polynomial design matrix [1, x, x^2, ..., x^degree] for a single predictor x
+    #builds polynomial design matrix [1, x, x^2, ..., x^degree] for a single predictor x
     
     x_arr = np.asarray(x).reshape(-1)
     n = len(x_arr)
@@ -70,7 +70,7 @@ def construct_poly_design_matrix(x, degree):
 
 # Solving normal equations given design matrix X and response vector y
 def normal_equations_solver(X, y):
-    # Solve (X^T X) beta = X^T y
+    # solves (X^T X) beta = X^T y
 
     XtX = X.T @ X
     Xty = X.T @ y
@@ -229,8 +229,10 @@ def polynomial_regression_analysis(x, y, max_degree=10):
 def main():
 
     csv_path = Path("climate_change_dataset.csv")
+
+    #makes sure the file is in the directory
     if not csv_path.exists():
-        print("Missing file climate_change_dataset.csv, please put it in the same folder so this can run.")
+        print("Missing the climate_change_dataset.csv file, please put it in the same folder so this can run")
         return
 
     df = load()
@@ -271,10 +273,12 @@ def main():
     print("Condition number cond(X):", cond_X)
     print()
 
+    
     # Predicted vs Actual
     plotting(y_test, y_pred, "Multiple Regression: Pred vs Actual",
              returned="multiple_pred_vs_actual.png")
 
+    
     # Polynomial regression (single predictor variable)
     poly_results = polynomial_regression_analysis(avg_temp, y, max_degree=10)
 
@@ -283,6 +287,7 @@ def main():
                 poly_results['test_errors'],
                 returned="poly_error_plot.png")
 
+    
     # Condition number plot (log scale)
     plt.figure(figsize=(7,6))
     plt.semilogy(range(1, 11), poly_results['cond_numbers'], marker='o')
@@ -294,6 +299,7 @@ def main():
     plt.savefig("poly_condition_plot.png")
     plt.close()
 
+    
     # Polynomial fits
     plot_polynomial_fits(avg_temp, y, max_degree=6)
 
