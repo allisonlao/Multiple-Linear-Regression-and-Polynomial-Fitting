@@ -10,24 +10,26 @@ def load():
 
 
 # Train / test split
-def train_test_split(x, y, split_ratio=0.8):
+def train_test_split(x, y, split_ratio=0.8, seed=0):
     # number of total data points
     n = len(x)
 
-    # shuffle the indices so the split is random
+    # create RNG with a fixed seed so results are reproducible
+    rng = np.random.default_rng(seed)
+
+    # shuffle the indices so the split is random (but repeatable)
     indices = np.arange(n)
-    np.random.shuffle(indices)
+    rng.shuffle(indices)
 
     # calculate size of the training set
     training_size = int(split_ratio * n)
 
-    # split the indices---first 80% goes into the training set, the rest goes to the test set
+    # split the indices --- first 80% goes into the training set, the rest goes to the test set
     training_idx = indices[:training_size]
     test_idx = indices[training_size:]
 
     # return the split datasets
     return x[training_idx], y[training_idx], x[test_idx], y[test_idx]
-
 
 
 # Constructing simple design matrix given 5 predictor variables
@@ -188,12 +190,9 @@ def plot_polynomial_fits(x, y, max_degree=5):
 # Polynomial regression analysis, combines the previously defined functions and returns polynomial model regression analysis 
 def polynomial_regression_analysis(x, y, max_degree=10):
     """
-    For degrees 1 to max_degree, this function
-      - build polynomial design matrices
-      - does the polynomial regression on the training and test sets
-      - computes training & test squared error
-      - computes singular values & condition number of X^T X on the training set
-    Returns the lists: train_errors, test_errors, cond_numbers, singular_values_list
+    For degrees 1 to max_degree, this builds polynomial design matrices, does the polynomial regression on the training and test sets, 
+    computes training & test squared error, computes singular values & condition number of X^T X on the training set, 
+    and returns the lists: train_errors, test_errors, cond_numbers, singular_values_list
     """
     
     # Make the train/test sets
@@ -227,18 +226,16 @@ def polynomial_regression_analysis(x, y, max_degree=10):
     }
 
 
-# main function to run the code on the global warming climate dataset
 def main():
 
     csv_path = Path("climate_change_dataset.csv")
     if not csv_path.exists():
-        print("Please put 'climate_change_dataset.csv' in the working directory and re run the code, cause it only works if it can find the CSV file in the same folder, thank you")
+        print("Missing file climate_change_dataset.csv, please put it in the same folder so this can run.")
         return
 
-    # load the csv file
     df = load()
-    
-    #names the columns
+
+    # Column names
     resp_col = 'CO2_Concentration (ppm)'
     p1 = 'Precipitation (mm)'
     p2 = 'Avg_Temp (°C)'
@@ -246,8 +243,7 @@ def main():
     p4 = 'Solar_Irradiance (W/m²)'
     p5 = 'Sea_Surface_Temp (°C)'
 
-    
-    # extract arrays from the columns
+    # numpy arrays
     precip = df[p1].to_numpy()
     avg_temp = df[p2].to_numpy()
     humidity = df[p3].to_numpy()
@@ -255,46 +251,53 @@ def main():
     sst = df[p5].to_numpy()
     y = df[resp_col].to_numpy()
 
-    
-    # constructs multiple-predictor design matrix and run a single linear fit
-    
+    # Multiple linear regression
     X = construct_design_matrix(precip, avg_temp, humidity, solar, sst)
+
     X_train, y_train, X_test, y_test = train_test_split(X, y)
     beta = normal_equations_solver(X_train, y_train)
-    y_test_pred = predict(X_test, beta)
-    se_test = squared_error(y_test, y_test_pred)
-    svals_XtX = singular_values_XtX(X_train)
-    cond_XtX = condition_number(svals_XtX)
-    print("From multiple linear regression (using normal equations):")
+    y_pred = predict(X_test, beta)
+
+    se_test = squared_error(y_test, y_pred)
+
+    # Condition number of XtX
+    XtX = X_train.T @ X_train
+    svals_XtX = np.linalg.svd(XtX, compute_uv=False)
+    cond_X = svals_XtX[0] / svals_XtX[-1]
+
+
+    print("Multiple Linear Regression Results:")
     print("Test squared error:", se_test)
-    print("Condition number (X^T X):", cond_XtX)
-    plotting(y_test, y_test_pred,
-         title='Multiple Regression: Predicted vs Actual',
-         returned='multiple_pred_vs_actual.png')
+    print("Condition number cond(X):", cond_X)
+    print()
 
-    
-    # Polynomial regression analysis using avg_temp as the single predictor
+    # Predicted vs Actual
+    plotting(y_test, y_pred, "Multiple Regression: Pred vs Actual",
+             returned="multiple_pred_vs_actual.png")
+
+    # Polynomial regression (single predictor variable)
     poly_results = polynomial_regression_analysis(avg_temp, y, max_degree=10)
-    plot_errors(poly_results['train_errors'], poly_results['test_errors'], returned = 'poly_error_plot.png')
-    print("Saved poly_error_plot.png, please go into the working directory to open it to see the constructed plot")
 
-    
-    # save condition numbers plot to observe numerical instability issues
-    plt.figure(figsize=(7,5))
-    plt.plot(np.arange(1, len(poly_results['cond_numbers'])+1), poly_results['cond_numbers'], marker='o')
-    plt.xlabel('Polynomial degree')
-    plt.ylabel('Condition number of X^T X (train)')
-    plt.title('Condition number vs polynomial degree')
+    # Error plot
+    plot_errors(poly_results['train_errors'],
+                poly_results['test_errors'],
+                returned="poly_error_plot.png")
+
+    # Condition number plot (log scale)
+    plt.figure(figsize=(7,6))
+    plt.semilogy(range(1, 11), poly_results['cond_numbers'], marker='o')
+    plt.xlabel("Polynomial degree")
+    plt.ylabel("cond(X) (log scale)")
+    plt.title("Condition Number vs Polynomial Degree")
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig('poly_condition_plot.png')
+    plt.savefig("poly_condition_plot.png")
     plt.close()
-    print("Saved poly_condition_plot.png, please go into the working directory to open it to see the constructed plot")
 
-    
-    # plot polynomial fits
+    # Polynomial fits
     plot_polynomial_fits(avg_temp, y, max_degree=6)
-    print("Saved poly_fits.png, please go into the working directory to open it to see the constructed plot")
+
+    print("Saved all plots: multiple_pred_vs_actual.png, poly_error_plot.png, poly_condition_plot.png, poly_fits.png")
 
 if __name__ == "__main__":
     main()
