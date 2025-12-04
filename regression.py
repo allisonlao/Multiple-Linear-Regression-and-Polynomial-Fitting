@@ -269,7 +269,6 @@ def main():
 
 
     print("Multiple Linear Regression Results:")
-    print("Test squared error:", se_test)
     print("Condition number cond(X):", cond_X)
     print()
 
