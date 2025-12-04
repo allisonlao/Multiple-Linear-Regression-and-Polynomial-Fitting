@@ -265,14 +265,12 @@ def main():
     se_test = squared_error(y_test, y_test_pred)
     svals_XtX = singular_values_XtX(X_train)
     cond_XtX = condition_number(svals_XtX)
-    print("Multiple linear regression (using normal equations):")
+    print("From multiple linear regression (using normal equations):")
     print("Test squared error:", se_test)
     print("Condition number (X^T X):", cond_XtX)
-
-    
-    # Plot predicted vs actual (multiple-regression)
-    plotting(y_test, y_test_pred, title='Multiple reg: Pred vs Actual', returned ='multiple_pred_vs_actual.png')
-    print("Saved multiple_pred_vs_actual.png in the folder, please go into the working directory to open it to see the constructed plot")
+    plotting(y_test, y_test_pred,
+         title='Multiple Regression: Predicted vs Actual',
+         returned='multiple_pred_vs_actual.png')
 
     
     # Polynomial regression analysis using avg_temp as the single predictor
